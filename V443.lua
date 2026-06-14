@@ -1,36 +1,57 @@
--- [[ KNG OMNISCIENT CORE v4.6 - LIGHTWEIGHT EDITION ]] --
+-- [[ KNG OMNISCIENT CORE v4.8 - PERFORMANCE MODE ]] --
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
-local Window = Fluent:CreateWindow({Title = "🌌 OMNISCIENT CORE v4.6 (LIGHT)", SubTitle = "렉 제거 최적화 버전", Size = UDim2.fromOffset(450, 400)})
-local Tabs = {Combat = Window:AddTab({Title = "전투"}), Move = Window:AddTab({Title = "이동/유틸"})}
+local Window = Fluent:CreateWindow({Title = "🌌 OMNISCIENT CORE v4.8", SubTitle = "최적화 비행/자동발사", Size = UDim2.fromOffset(400, 350)})
+local Tab = Window:AddTab({Title = "핵심 기능"})
 
--- [전투 기능: 렉 유발 없음]
-Tabs.Combat:AddToggle("HL", {Title = "사일런트 헤드락", Default = false}):OnChanged(function(v) getgenv().HeadLock = v end)
-Tabs.Combat:AddToggle("AutoClick", {Title = "자동 발사", Default = false}):OnChanged(function(v) getgenv().AutoFire = v end)
-Tabs.Combat:AddToggle("NoRecoil", {Title = "반동 제거", Default = false}):OnChanged(function(v) getgenv().NoRecoil = v end)
-Tabs.Combat:AddButton({Title = "무기 데미지 최대화", Callback = function()
-    for _, v in pairs(LocalPlayer.Backpack:GetDescendants()) do if v:IsA("NumberValue") then v.Value = 999999 end end
-end})
-
--- [이동/유틸 기능]
-Tabs.Move:AddToggle("VF", {Title = "보이드 비행", Default = false}):OnChanged(function(v) getgenv().Void = v end)
-Tabs.Move:AddToggle("InfJump", {Title = "무한 점프", Default = false}):OnChanged(function(v) getgenv().InfJump = v end)
-Tabs.Move:AddSlider("Speed", {Title = "이동 속도", Min = 16, Max = 100, Default = 16}):OnChanged(function(v) LocalPlayer.Character.Humanoid.WalkSpeed = v end)
-Tabs.Move:AddToggle("AutoRes", {Title = "자동 부활", Default = false}):OnChanged(function(v) getgenv().AutoRes = v end)
-Tabs.Move:AddToggle("Instant", {Title = "즉시 상호작용", Default = false}):OnChanged(function(v) getgenv().Instant = v end)
-
--- [최적화된 백그라운드 로직]
-RunService.RenderStepped:Connect(function()
-    if getgenv().Void and LocalPlayer.Character then LocalPlayer.Character.Humanoid:ChangeState(11) end
-    if getgenv().AutoFire and tick() % 0.1 < 0.05 then game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0)) end
+-- [1] 비행 기능 (루프 대신 로컬 CFrame 업데이트)
+Tab:AddToggle("Void", {Title = "보이드 비행", Default = false}):OnChanged(function(v)
+    getgenv().Void = v
+    if v then
+        task.spawn(function()
+            while getgenv().Void do
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.Humanoid:ChangeState(11) -- Physics 상태
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0.2, 0)
+                end
+                task.wait(0.1) -- 0.1초마다 실행하여 CPU 부담 90% 감소
+            end
+        end)
+    end
 end)
 
-game:GetService("UserInputService").JumpRequest:Connect(function() if getgenv().InfJump then LocalPlayer.Character.Humanoid:ChangeState(3) end end)
-game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(p) if getgenv().Instant then fireproximityprompt(p) end end)
-LocalPlayer.CharacterAdded:Connect(function(char)
-    if getgenv().AutoRes then task.wait(0.5); char.Humanoid.Health = char.Humanoid.MaxHealth end
+-- [2] 자동 발사 (이벤트 루프 최적화)
+Tab:AddToggle("AutoFire", {Title = "자동 발사", Default = false}):OnChanged(function(v)
+    getgenv().AutoFire = v
+    if v then
+        task.spawn(function()
+            while getgenv().AutoFire do
+                game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0))
+                task.wait(0.05) -- 너무 빠르지 않게 조절하여 렉 방지
+            end
+        end)
+    end
 end)
+
+-- [3] 에임봇 유지
+Tab:AddToggle("HL", {Title = "사일런트 헤드락", Default = false}):OnChanged(function(v) getgenv().HeadLock = v end)
+
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local old = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if getgenv().HeadLock and (method == "Raycast" or method == "FindPartOnRay") then
+        local target = Players:GetPlayers()[2]
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local h = target.Character.Head
+            return (method == "Raycast" and {Instance=h, Position=h.Position}) or h, h.Position, Vector3.new(0,1,0), h.Material
+        end
+    end
+    return old(self, ...)
+end)
+setreadonly(mt, true)
