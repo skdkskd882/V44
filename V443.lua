@@ -1,24 +1,38 @@
--- [[ 누르면 D짐 - 최적화된 고정 버튼 ]] --
+-- [[ YABUJIN CORE FRAMEWORK - BASE ]] --
 
-local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-local Button = Instance.new("TextButton", ScreenGui)
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
--- 버튼 설정
-Button.Size = UDim2.new(0, 200, 0, 50)
-Button.Position = UDim2.new(0.5, -100, 0.5, -25)
-Button.Text = "누르면 D짐"
-Button.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- 검은색 배경
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.Font = Enum.Font.SourceSansBold
-Button.TextSize = 20
-Button.BorderSizePixel = 0
+local Window = Fluent:CreateWindow({Title = "YABUJIN v5.0", SubTitle = "All Features", Size = UDim2.fromOffset(400, 500)})
 
--- [핵심] 클릭 이벤트 연결 (클릭해야만 실행됨)
-Button.MouseButton1Click:Connect(function()
-    local Root = game:GetService("Players").LocalPlayer.Character and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if Root then
-        Root.CFrame = CFrame.new(math.huge, math.huge, math.huge)
+-- 탭 구성
+local Tabs = {
+    Main = Window:AddTab({Title = "전투"}),
+    Movement = Window:AddTab({Title = "이동"}),
+    Misc = Window:AddTab({Title = "기타"})
+}
+
+-- [1. 전투 모듈]
+Tabs.Main:AddToggle("Aimbot", {Title = "사일런트 에임", Default = false}):OnChanged(function(v) getgenv().Aimbot = v end)
+Tabs.Main:AddToggle("AutoFire", {Title = "자동 발사", Default = false}):OnChanged(function(v) getgenv().AutoFire = v end)
+
+-- [2. 이동 모듈]
+Tabs.Movement:AddToggle("Fly", {Title = "보이드 비행", Default = false}):OnChanged(function(v) getgenv().Fly = v end)
+Tabs.Movement:AddSlider("Speed", {Title = "속도", Min = 16, Max = 500, Default = 16}):OnChanged(function(v) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v end)
+
+-- [3. 기타/워프]
+Tabs.Misc:AddButton({
+    Title = "누르면 D짐 (VOID WARP)",
+    Callback = function()
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(math.huge, math.huge, math.huge)
     end
-    -- 실행 후 버튼 삭제
-    ScreenGui:Destroy()
+})
+
+-- [시스템 루프 - 야부진 엔진 핵심]
+game:GetService("RunService").RenderStepped:Connect(function()
+    if getgenv().Aimbot then
+        -- 여기서 실제 타겟팅 연산이 들어감
+    end
+    if getgenv().Fly then
+        -- 여기서 물리 중력 무시 연산이 들어감
+    end
 end)
