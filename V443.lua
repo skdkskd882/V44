@@ -1,45 +1,39 @@
--- [[ KNG OMNISCIENT CORE v4.8 - PERFORMANCE MODE ]] --
+-- [[ KNG OMNISCIENT CORE v4.9 - PURE PERFORMANCE ]] --
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
-local Window = Fluent:CreateWindow({Title = "🌌 OMNISCIENT CORE v4.8", SubTitle = "최적화 비행/자동발사", Size = UDim2.fromOffset(400, 350)})
-local Tab = Window:AddTab({Title = "핵심 기능"})
+local Window = Fluent:CreateWindow({Title = "🌌 OMNISCIENT CORE v4.9", SubTitle = "최종 무결점 버전", Size = UDim2.fromOffset(400, 250)})
+local Tab = Window:AddTab({Title = "필수 기능"})
 
--- [1] 비행 기능 (루프 대신 로컬 CFrame 업데이트)
-Tab:AddToggle("Void", {Title = "보이드 비행", Default = false}):OnChanged(function(v)
-    getgenv().Void = v
-    if v then
-        task.spawn(function()
-            while getgenv().Void do
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.Humanoid:ChangeState(11) -- Physics 상태
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0.2, 0)
-                end
-                task.wait(0.1) -- 0.1초마다 실행하여 CPU 부담 90% 감소
-            end
-        end)
-    end
-end)
-
--- [2] 자동 발사 (이벤트 루프 최적화)
-Tab:AddToggle("AutoFire", {Title = "자동 발사", Default = false}):OnChanged(function(v)
-    getgenv().AutoFire = v
-    if v then
-        task.spawn(function()
-            while getgenv().AutoFire do
-                game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0))
-                task.wait(0.05) -- 너무 빠르지 않게 조절하여 렉 방지
-            end
-        end)
-    end
-end)
-
--- [3] 에임봇 유지
+-- [1] 사일런트 헤드락 (데이터 처리 - 루프 없음)
 Tab:AddToggle("HL", {Title = "사일런트 헤드락", Default = false}):OnChanged(function(v) getgenv().HeadLock = v end)
 
+-- [2] 비행 (비상시만 작동 - 루프 없이 CFrame만 직접 이동)
+Tab:AddToggle("Void", {Title = "보이드 비행 (단발식)", Default = false}):OnChanged(function(v)
+    if v and LocalPlayer.Character then
+        LocalPlayer.Character.Humanoid:ChangeState(11)
+        LocalPlayer.Character.HumanoidRootPart.CFrame += Vector3.new(0, 10, 0)
+    end
+end)
+
+-- [3] 자동 발사 (클릭할 때만 작동 - 루프 없음)
+Tab:AddToggle("AutoFire", {Title = "자동 발사 (클릭 유지 시)", Default = false}):OnChanged(function(v)
+    getgenv().AutoFire = v
+end)
+
+game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and getgenv().AutoFire then
+        while game:GetService("UserInputService"):IsMouseButtonDown(Enum.UserInputType.MouseButton1) do
+            game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0))
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- [사일런트 헤드락 로직]
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
 local old = mt.__namecall
@@ -55,3 +49,4 @@ mt.__namecall = newcclosure(function(self, ...)
     return old(self, ...)
 end)
 setreadonly(mt, true)
+
